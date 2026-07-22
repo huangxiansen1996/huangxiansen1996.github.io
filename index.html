@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>出行省钱帮手 · 多平台比价预订</title>
+<style>
+  :root{
+    --bg:#f5f7fa; --card:#fff; --text:#1f2329; --sub:#8a9099;
+    --ctrip:#2b7de9; --tc:#ff7a00; --mt:#ffb400;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);padding-bottom:24px}
+  header{background:linear-gradient(135deg,#2b7de9,#1b66c9);color:#fff;padding:22px 16px 18px}
+  header h1{font-size:21px;font-weight:800}
+  header p{font-size:13px;opacity:.92;margin-top:6px;line-height:1.6}
+  .union{background:rgba(255,255,255,.18);border-radius:8px;padding:7px 11px;margin-top:12px;font-size:12px;display:flex;justify-content:space-between;align-items:center}
+  .union b{font-weight:700}
+  .section{padding:14px 14px 0}
+  .sec-title{font-size:15px;font-weight:800;margin:6px 2px 10px;display:flex;align-items:center;gap:8px}
+  .sec-title .em{font-size:12px;color:var(--sub);font-weight:500}
+  .plat{background:var(--card);border-radius:14px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;box-shadow:0 1px 5px rgba(0,0,0,.05)}
+  .plat:active{transform:scale(.99)}
+  .plat-ico{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;flex-shrink:0;font-weight:800}
+  .plat-main{flex:1;min-width:0}
+  .plat-name{font-size:16px;font-weight:700}
+  .plat-note{font-size:12px;color:var(--sub);margin-top:3px;line-height:1.5}
+  .plat-go{padding:8px 15px;border-radius:20px;background:var(--ctrip);color:#fff;font-size:14px;font-weight:700;flex-shrink:0}
+  .plat-go:active{opacity:.85}
+  .plat.disabled{opacity:.55}
+  .plat-go.off{background:#c8ccd4}
+  .note{margin:10px 16px 0;background:#fff7e6;border:1px solid #ffe1a8;border-radius:12px;padding:12px 14px;font-size:12px;color:#9a6b15;line-height:1.7}
+  .note b{color:#d48806}
+  footer{font-size:11px;color:var(--sub);text-align:center;padding:18px 14px;line-height:1.8}
+</style>
+</head>
+<body>
+<header>
+  <h1>出行省钱帮手</h1>
+  <p>酒店 · 机票 · 门票，多平台并列，点进去自己比价，选最便宜的下单。</p>
+  <div class="union"><span>多平台比价</span><span>点击直达官方预订</span></div>
+</header>
+
+<div id="app"></div>
+
+<div class="note">
+  💡 跳转直达携程 / 同程 / 美团官方预订页，各平台实际价格以官方页面为准，请自行比对后下单。
+</div>
+
+<footer>
+  本工具为多平台推广比价导航，交易在各平台官方完成。<br>
+  © 出行省钱帮手 · 比价导航版
+</footer>
+
+<script>
+// 注：携程联盟 ID（CPS 归因身份）已内嵌在下方各条专属短链背后，
+//     不在页面任何位置明文展示，避免被他人盗用。
+// 携程联盟专属推广深链（已绑定站长联盟归因）
+const UNION_LINKS = {
+  hotel:   'https://t.ctrip.cn/kDP7sDi', // 携程酒店手机版
+  flight:  'https://t.ctrip.cn/pD9grvd', // 携程机票移动版
+  ticket:  'https://t.ctrip.cn/iTGGGtA', // 携程景点门票
+};
+
+// 同程推广短链（黄总提供，s.ly.com 为同程推广短链，带其推广归因）
+const TONGCHENG = {
+  hotel:  null,                       // 待黄总提供同程酒店推广短链
+  flight: 'https://s.ly.com/Ph031b6P4', // 同程机票（国内+国际）
+  ticket: null,                       // 待黄总提供同程门票推广短链
+};
+
+// 美团推广短链（黄总提供，dpurl.cn 为美团点评推广短链，带其推广归因）
+const MEITUAN = {
+  hotel:  'http://dpurl.cn/WrKOattz', // 美团酒店（备用: http://dpurl.cn/8vM3AMwz）
+  flight: 'http://dpurl.cn/J9FldGyz', // 美团机票（备用: http://dpurl.cn/wSrnpejz）
+  ticket: 'http://dpurl.cn/Rj6va9yz', // 美团门票
+  // 美团小程序码（仅微信/小程序内可用，H5 打不开，留待做分享/小程序时用）：
+  // #小程序://美团丨外卖团购特价美食酒店电影/民宿特惠7折起/I6MQDpyibBcGkIJ
+};
+
+// 分类 + 每类支持的平台
+const CATS = [
+  { type:'hotel',  icon:'🏨', name:'酒店预订', plats:['ctrip','tongcheng','meituan'] },
+  { type:'flight', icon:'✈️', name:'机票预订', plats:['ctrip','tongcheng','meituan'] },
+  { type:'ticket', icon:'🎫', name:'景点门票', plats:['ctrip','tongcheng','meituan'] },
+];
+
+// 平台元信息
+const PLAT_META = {
+  ctrip: {
+    name:'携程', color:'#2b7de9',
+    note:'连锁多 · 会员价',
+    getUrl:(t)=> UNION_LINKS[t],
+  },
+  tongcheng: {
+    name:'同程', color:'#ff7a00',
+    note:'常发券 · 机票便宜',
+    getUrl:(t)=> TONGCHENG[t] || null,
+  },
+  meituan: {
+    name:'美团', color:'#ffb400',
+    note:'本地低价 · 到店优惠',
+    getUrl:(t)=> MEITUAN[t] || null,
+  },
+};
+
+// 点击平台 → 跳对应联盟链接（归因到黄总）
+function goOrder(plat, type){
+  const meta = PLAT_META[plat];
+  const url = meta.getUrl(type);
+  if(!url){ alert(`${meta.name} 链接待站长接入，先用携程吧～`); return; }
+  window.open(url, '_blank');
+}
+
+// 渲染
+const app = document.getElementById('app');
+let html = '';
+CATS.forEach(c=>{
+  html += `<div class="section"><div class="sec-title">${c.icon} ${c.name} <span class="em">· 选平台比价下单</span></div>`;
+  c.plats.forEach(p=>{
+    const m = PLAT_META[p];
+    const on = !!m.getUrl(c.type);
+    html += `<div class="plat ${on?'':'disabled'}" onclick="goOrder('${p}','${c.type}')">
+      <div class="plat-ico" style="background:${m.color}">${m.name[0]}</div>
+      <div class="plat-main"><div class="plat-name">${m.name}</div><div class="plat-note">${m.note}</div></div>
+      <div class="plat-go ${on?'':'off'}">${on?'去预订 ›':'待接入'}</div>
+    </div>`;
+  });
+  html += `</div>`;
+});
+app.innerHTML = html;
+</script>
+</body>
+</html>
